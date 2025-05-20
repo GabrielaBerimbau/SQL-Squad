@@ -19,9 +19,19 @@ document.addEventListener('DOMContentLoaded', function() {
         sort: 'default',
         search: ''
     };
+
+    // Wishlist items cache
+    let wishlistItems = {};
     
     // Initialize product display
     loadProducts();
+    
+    // Check if user is logged in
+    const isLoggedIn = !!localStorage.getItem('user_id');
+    if (isLoggedIn) {
+        // If logged in, get their wishlist items
+        checkWishlistItems();
+    }
     
     // Setup event listeners
     searchBar.addEventListener('input', debounce(function() {
@@ -51,6 +61,14 @@ document.addEventListener('DOMContentLoaded', function() {
     sortSelect.addEventListener('change', function() {
         filters.sort = this.value;
         loadProducts();
+    });
+    
+    // Add to wishlist functionality
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('wishlist-btn')) {
+            const productId = e.target.getAttribute('data-id');
+            toggleWishlistItem(productId, e.target);
+        }
     });
     
     // Load products from API
@@ -97,6 +115,46 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Check which products are in the user's wishlist
+    function checkWishlistItems() {
+        const userId = localStorage.getItem('user_id');
+        if (!userId) return;
+        
+        // Get all products on the page
+        const productElements = document.querySelectorAll('.product-card');
+        const productIds = Array.from(productElements).map(el => {
+            const btn = el.querySelector('.wishlist-btn');
+            return btn ? btn.getAttribute('data-id') : null;
+        }).filter(id => id);
+        
+        // For each product, check if it's in the wishlist
+        productIds.forEach(productId => {
+            const requestData = {
+                type: 'Wishlist',
+                action: 'check',
+                product_id: productId
+            };
+            
+            fetch('api.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    wishlistItems[productId] = data.data.in_wishlist;
+                    updateWishlistButton(productId);
+                }
+            })
+            .catch(error => {
+                console.error('Error checking wishlist status:', error);
+            });
+        });
+    }
+    
     // Update price range slider based on actual product prices
     function updatePriceRange(priceRangeData) {
         if (priceRangeData.min_price !== null && priceRangeData.max_price !== null) {
@@ -140,6 +198,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 '<span class="in-stock">In Stock</span>' : 
                 '<span class="out-of-stock">Out of Stock</span>';
             
+            // Determine wishlist button state
+            const isInWishlist = wishlistItems[product.product_id] || false;
+            const wishlistBtnClass = isInWishlist ? 'wishlist-btn in-wishlist' : 'wishlist-btn';
+            const wishlistBtnText = isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist';
+            
             productCard.innerHTML = `
                 <img src="${product.primary_image}" alt="${product.name}" class="product-image">
                 <h3 class="product-name">${product.name}</h3>
@@ -148,13 +211,112 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p class="product-rating">★ ${ratingDisplay}</p>
                 <p class="product-stock">${stockStatus}</p>
                 <p class="product-description">${product.description ? product.description.substring(0, 100) + '...' : 'No description available'}</p>
-                <button class="add-to-cart-btn" data-id="${product.product_id}" ${product.in_stock != 1 ? 'disabled' : ''}>
-                    ${product.in_stock == 1 ? 'Add to Cart' : 'Out of Stock'}
+                <button class="${wishlistBtnClass}" data-id="${product.product_id}">
+                    ${wishlistBtnText}
                 </button>
                 <button class="view-details-btn" onclick="window.location.href='product-details.php?id=${product.product_id}'">View Details</button>
             `;
             
             productContainer.appendChild(productCard);
+        });
+        
+        // After adding all products, check wishlist status
+        if (localStorage.getItem('user_id')) {
+            checkWishlistItems();
+        }
+    }
+    
+    // Toggle wishlist item (add/remove)
+    function toggleWishlistItem(productId, buttonElement) {
+        // Check if user is logged in
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
+            showAlert('Please log in to add items to your wishlist.', 'error');
+            setTimeout(() => {
+                window.location.href = 'login.php';
+            }, 2000);
+            return;
+        }
+        
+        // Determine action based on current state
+        const isInWishlist = wishlistItems[productId] || false;
+        const action = isInWishlist ? 'remove' : 'add';
+        
+        // Update UI optimistically
+        if (buttonElement) {
+            if (action === 'add') {
+                buttonElement.classList.add('in-wishlist');
+                buttonElement.textContent = 'Remove from Wishlist';
+            } else {
+                buttonElement.classList.remove('in-wishlist');
+                buttonElement.textContent = 'Add to Wishlist';
+            }
+        }
+        
+        // Prepare wishlist data
+        const wishlistData = {
+            type: 'Wishlist',
+            action: action,
+            product_id: productId
+        };
+        
+        // Send request to API
+        fetch('api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(wishlistData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Update cached wishlist state
+                wishlistItems[productId] = !isInWishlist;
+                
+                // Show success message
+                const message = action === 'add' ? 
+                    'Product added to wishlist!' : 
+                    'Product removed from wishlist';
+                showAlert(message, 'success');
+            } else {
+                // Revert UI on error
+                if (buttonElement) {
+                    if (action === 'add') {
+                        buttonElement.classList.remove('in-wishlist');
+                        buttonElement.textContent = 'Add to Wishlist';
+                    } else {
+                        buttonElement.classList.add('in-wishlist');
+                        buttonElement.textContent = 'Remove from Wishlist';
+                    }
+                }
+                
+                // Show error message
+                showAlert('Failed to update wishlist: ' + data.data, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('An error occurred. Please try again.', 'error');
+            
+            // Revert UI on error
+            updateWishlistButton(productId);
+        });
+    }
+    
+    // Update wishlist button appearance based on cached state
+    function updateWishlistButton(productId) {
+        const buttons = document.querySelectorAll(`.wishlist-btn[data-id="${productId}"]`);
+        const isInWishlist = wishlistItems[productId] || false;
+        
+        buttons.forEach(button => {
+            if (isInWishlist) {
+                button.classList.add('in-wishlist');
+                button.textContent = 'Remove from Wishlist';
+            } else {
+                button.classList.remove('in-wishlist');
+                button.textContent = 'Add to Wishlist';
+            }
         });
     }
     

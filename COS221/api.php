@@ -185,45 +185,78 @@ class API
         
         // Check for category_id filter
         if (isset($data['category_id']) && !empty($data['category_id']) && $data['category_id'] !== 'default') {
-            $whereClause .= ($whereClause ? " AND " : " WHERE ") . "category_id = ?";
+            $whereClause .= ($whereClause ? " AND " : " WHERE ") . "p.category_id = ?";
             $params[] = $data['category_id'];
             $types .= "i";  // Integer for category_id
         }
         
         // Check for brand filter
         if (isset($data['brand']) && !empty($data['brand']) && $data['brand'] !== 'default') {
-            $whereClause .= ($whereClause ? " AND " : " WHERE ") . "brand = ?";
+            $whereClause .= ($whereClause ? " AND " : " WHERE ") . "p.brand = ?";
             $params[] = $data['brand'];
             $types .= "s";
+        }
+        
+        // Check for price range filter if provided
+        if (isset($data['maxPrice']) && is_numeric($data['maxPrice'])) {
+            $whereClause .= ($whereClause ? " AND " : " WHERE ") . "l.price <= ?";
+            $params[] = $data['maxPrice'];
+            $types .= "d";  // Decimal for price
         }
         
         // Check for search term
         if (isset($data['search']) && !empty($data['search'])) {
             $searchTerm = "%" . $data['search'] . "%";
-            $whereClause .= ($whereClause ? " AND " : " WHERE ") . "(name LIKE ? OR description LIKE ?)";
+            $whereClause .= ($whereClause ? " AND " : " WHERE ") . "(p.name LIKE ? OR p.description LIKE ?)";
             $params[] = $searchTerm;
             $params[] = $searchTerm;
             $types .= "ss";
         }
         
-        // Build the query
-        $query = "SELECT * FROM PRODUCT" . $whereClause;
+        // Build the base query - join PRODUCT with LISTING and include average rating from REVIEW
+        $query = "
+            SELECT 
+                p.*,
+                l.price,
+                l.in_stock,
+                l.listing_id,
+                l.user_id AS seller_id,
+                COALESCE(AVG(r.rating), 0) AS avg_rating,
+                COUNT(r.rating) AS review_count
+            FROM 
+                PRODUCT p
+            LEFT JOIN 
+                LISTING l ON p.product_id = l.product_id
+            LEFT JOIN 
+                REVIEW r ON p.product_id = r.product_id
+            $whereClause
+            GROUP BY 
+                p.product_id, l.listing_id
+        ";
         
         // Add sorting
         if (isset($data['sort']) && $data['sort'] !== 'default') {
             switch ($data['sort']) {
+                case 'price-low':
+                    $query .= " ORDER BY l.price ASC";
+                    break;
+                case 'price-high':
+                    $query .= " ORDER BY l.price DESC";
+                    break;
                 case 'rating-high':
-                    $query .= " ORDER BY avg_rating DESC NULLS LAST";
+                    $query .= " ORDER BY avg_rating DESC";
                     break;
                 case 'rating-low':
-                    $query .= " ORDER BY avg_rating ASC NULLS LAST";
+                    $query .= " ORDER BY avg_rating ASC";
                     break;
-                default:
-                    $query .= " ORDER BY product_id ASC";
+                case 'Wishlist':
+                    $this->handleWishlist($data);
+                    break;
+                    $query .= " ORDER BY p.product_id ASC";
                     break;
             }
         } else {
-            $query .= " ORDER BY product_id ASC";
+            $query .= " ORDER BY p.product_id ASC";
         }
         
         // Prepare and execute the statement
@@ -255,6 +288,10 @@ class API
                 $row['primary_image'] = 'img/default-product.jpg';
             }
             
+            // Format the price and rating
+            $row['price_formatted'] = 'R' . number_format($row['price'], 2);
+            $row['avg_rating'] = round($row['avg_rating'], 1);
+            
             $products[] = $row;
         }
         
@@ -278,14 +315,107 @@ class API
             }
         }
         
+        // Get price range for slider
+        $priceQuery = "SELECT MIN(price) as min_price, MAX(price) as max_price FROM LISTING WHERE price > 0";
+        $priceResult = $this->conn->query($priceQuery);
+        $priceRange = $priceResult->fetch_assoc();
+        
         // Return the data
         $this->returnSuccess([
             'products' => $products,
             'categories' => $categories,
-            'brands' => $brands
+            'brands' => $brands,
+            'price_range' => $priceRange
         ]);
         
         $stmt->close();
+    }
+
+    private function handleWishlist($data) 
+    {
+        // Check if user is logged in via session
+        if (!isset($_SESSION['user_id'])) {
+            $this->returnError("You must be logged in to manage your wishlist", 401);
+            return;
+        }
+        
+        // Check required parameters
+        if (!isset($data['action']) || !isset($data['product_id'])) {
+            $this->returnError("Missing required parameters", 400);
+            return;
+        }
+        
+        $userId = $_SESSION['user_id'];
+        $productId = $data['product_id'];
+        $action = $data['action'];
+        
+        // Verify the product exists
+        $productCheck = $this->conn->prepare("SELECT product_id FROM PRODUCT WHERE product_id = ?");
+        $productCheck->bind_param("i", $productId);
+        $productCheck->execute();
+        $productResult = $productCheck->get_result();
+        
+        if ($productResult->num_rows === 0) {
+            $this->returnError("Product not found", 404);
+            return;
+        }
+        
+        switch ($action) {
+            case 'add':
+                // Check if item is already in wishlist
+                $checkStmt = $this->conn->prepare("SELECT * FROM WISHLIST WHERE user_id = ? AND product_id = ?");
+                $checkStmt->bind_param("ii", $userId, $productId);
+                $checkStmt->execute();
+                $checkResult = $checkStmt->get_result();
+                
+                if ($checkResult->num_rows > 0) {
+                    $this->returnError("Product already in wishlist", 409);
+                    return;
+                }
+                
+                // Add to wishlist
+                $addStmt = $this->conn->prepare("INSERT INTO WISHLIST (user_id, product_id) VALUES (?, ?)");
+                $addStmt->bind_param("ii", $userId, $productId);
+                
+                if ($addStmt->execute()) {
+                    $this->returnSuccess(["message" => "Product added to wishlist"]);
+                } else {
+                    $this->returnError("Failed to add product to wishlist", 500);
+                }
+                break;
+                
+            case 'remove':
+                // Remove from wishlist
+                $removeStmt = $this->conn->prepare("DELETE FROM WISHLIST WHERE user_id = ? AND product_id = ?");
+                $removeStmt->bind_param("ii", $userId, $productId);
+                
+                if ($removeStmt->execute()) {
+                    if ($this->conn->affected_rows > 0) {
+                        $this->returnSuccess(["message" => "Product removed from wishlist"]);
+                    } else {
+                        $this->returnError("Product was not in wishlist", 404);
+                    }
+                } else {
+                    $this->returnError("Failed to remove product from wishlist", 500);
+                }
+                break;
+                
+            case 'check':
+                // Check if product is in wishlist
+                $checkStmt = $this->conn->prepare("SELECT * FROM WISHLIST WHERE user_id = ? AND product_id = ?");
+                $checkStmt->bind_param("ii", $userId, $productId);
+                $checkStmt->execute();
+                $checkResult = $checkStmt->get_result();
+                
+                $this->returnSuccess([
+                    "in_wishlist" => $checkResult->num_rows > 0
+                ]);
+                break;
+                
+            default:
+                $this->returnError("Invalid action", 400);
+                break;
+        }
     }
 
     private function returnError($msg, $statusCode = 400) 

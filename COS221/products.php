@@ -13,8 +13,6 @@ include('config.php');
     <title>Products - COS221</title>
     <link rel="stylesheet" href="css/products.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
-    <script src="js/products.js"></script>
-
 </head>
 <body>
 
@@ -45,9 +43,17 @@ include('config.php');
         </div>
 
         <div class="filter-box">
+            <h3>Price Range</h3>
+            <input type="range" id="price-range" min="0" max="10000" step="100" value="10000">
+            <p id="price-range-value">Max Price: R10000</p>
+        </div>
+
+        <div class="filter-box">
             <h3>Sort By</h3>
             <select id="sort-select">
                 <option value="default">Default</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
                 <option value="rating-high">Rating: High to Low</option>
                 <option value="rating-low">Rating: Low to High</option>
             </select>
