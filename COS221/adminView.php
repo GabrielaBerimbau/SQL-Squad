@@ -109,9 +109,6 @@ $retailers = [
                     <i class="fas fa-search"></i>
                     <input type="text" placeholder="Search retailers...">
                 </div>
-                <button class="add-retailer-btn">
-                    <i class="fas fa-plus"></i> Add New Retailer
-                </button>
             </div>
 
             <div class="bulk-actions">
