@@ -41,4 +41,14 @@ document.addEventListener('DOMContentLoaded', function(){
             showError('An error occured during login. Please try again later.')
         });
     });
-})
+
+    function showError(message){
+        errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
+
+        // hiding the error msg after 5 secs
+        setTimeout(()=> {
+            errorMessage.style.display = 'none';
+        }, 5000);
+    }
+});
