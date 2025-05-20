@@ -6,6 +6,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="css/signup.css" />
     <link rel="stylesheet" href="css/footer.css" />
+    <script src="js/signup.js"></script>
 </head>
 
 <main>
@@ -25,7 +26,6 @@
             <select id="role" name="role" required>
                 <option value="Customer">Customer</option>
                 <option value="Retailer">Retailer</option>
-                <option value="Administrator">Administrator</option>
             </select>
 
             <div id="error-msg" style="color: red; display: none;"></div>

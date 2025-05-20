@@ -6,6 +6,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="css/login.css" />
     <link rel="stylesheet" href="css/footer.css" />
+    <script src="js/login.js"></script>
+
 </head>
 
 <main>
