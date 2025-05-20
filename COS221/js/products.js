@@ -217,3 +217,58 @@ function updateProductDisplay() {
 
 
 
+/**
+ * Add event listeners for filtering and sorting
+ */
+function addEventListeners() {
+    // Search bar
+    const searchBar = document.querySelector(".search-bar");
+    if (searchBar) {
+        searchBar.addEventListener("input", updateProductDisplay);
+    }
+    
+    // Category filter
+    const categorySelect = document.getElementById("category-select");
+    if (categorySelect) {
+        categorySelect.addEventListener("change", updateProductDisplay);
+    }
+    
+    // Brand filter
+    const brandSelect = document.getElementById("brand-select");
+    if (brandSelect) {
+        brandSelect.addEventListener("change", updateProductDisplay);
+    }
+    
+    // Sort select
+    const sortSelect = document.getElementById("sort-select");
+    if (sortSelect) {
+        sortSelect.addEventListener("change", updateProductDisplay);
+    }
+}
+
+// Initialize on page load
+document.addEventListener("DOMContentLoaded", function() {
+    fetchProducts();
+    addEventListeners();
+    
+    // Handle success alert from URL parameters (e.g., after registration)
+    const successAlert = document.getElementById('success-alert');
+    if (successAlert) {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('registered') === 'true') {
+            successAlert.textContent = "Registration Successful! Welcome to CompareIt.";
+            successAlert.style.display = 'block';
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                successAlert.style.display = 'none';
+            }, 5000);
+            
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+});
+
+
+
