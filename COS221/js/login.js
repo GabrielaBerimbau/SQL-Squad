@@ -17,5 +17,28 @@ document.addEventListener('DOMContentLoaded', function(){
 
         formData.append('username', username);
         formData.append('password', password);
-    })
+
+        fetch('../authenticate.php',{
+            method: 'POST', body: formData
+        }) .then(response=> {
+            if(!response.ok){
+                throw new Error('Error with network response');
+            }
+
+            return response.json();
+        }) .then(data=> {
+            if(data.success){
+
+                window.location.href = data.redirect;
+            }
+
+            else{
+                showError(data.message || 'Invalid username or password');
+            }
+        })
+        .catch(error=> {
+            console.error('Error: ', error);
+            showError('An error occured during login. Please try again later.')
+        });
+    });
 })
