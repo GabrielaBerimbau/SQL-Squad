@@ -35,7 +35,29 @@
                 }
 
                 if(password_verify($password, $user['password'])){
-                    
+                    $_SESSION['user_id'] = $user['user_id'];
+                    $_SESSION['username'] = $username;
+                    $_SESSION['role'] = $user['role'];
+
+                    $redirect = '';
+
+                    switch($user['role']){
+                        case  'admin':
+                            $redirect = 'adminView.php'; // going to php file
+                            break;
+
+                        case 'retailer':
+                            $redirect = 'retailerView.php';
+                            break;
+
+                        case 'customer':
+                            $redirect = 'products.php';
+                            break;
+
+                        default:
+                            $redirect = 'login.php'; //***check
+                            break;
+                    }
                 }
             }
         }
