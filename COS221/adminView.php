@@ -3,7 +3,7 @@
 $pageTitle = "Admin - Manage Retailers";
 session_start();
 
-$isAdmin = true; 
+$isAdmin = true;
 
 $retailers = [
     [
@@ -59,16 +59,18 @@ $retailers = [
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $pageTitle; ?> | Compare It</title>
-    <link rel="stylesheet" href="css/adminView.css">   
+    <link rel="stylesheet" href="css/adminView.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
- 
+
 </head>
+
 <body>
-<div class="navbar">
+    <div class="navbar">
         <a href="#" class="brand">CompareIt</a>
         <div class="user-info">
             <div class="user-details">
@@ -89,11 +91,15 @@ $retailers = [
                 <div class="stat-label">Total Retailers</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number"><?php echo count(array_filter($retailers, function($r) { return $r['status'] === 'allowed'; })); ?></div>
+                <div class="stat-number"><?php echo count(array_filter($retailers, function ($r) {
+                                                return $r['status'] === 'allowed';
+                                            })); ?></div>
                 <div class="stat-label">Active Retailers</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number"><?php echo count(array_filter($retailers, function($r) { return $r['status'] === 'restricted'; })); ?></div>
+                <div class="stat-number"><?php echo count(array_filter($retailers, function ($r) {
+                                                return $r['status'] === 'restricted';
+                                            })); ?></div>
                 <div class="stat-label">Restricted Retailers</div>
             </div>
             <div class="stat-card">
@@ -118,35 +124,35 @@ $retailers = [
 
             <div class="retailers-list">
                 <?php foreach ($retailers as $retailer): ?>
-                <div class="retailer-item">
-                    <div class="retailer-logo">
-                        <i class="fas fa-store"></i>
-                        <!-- In production, use the actual logo: -->
-                        <!-- <img src="<?php echo $retailer['logo']; ?>" alt="<?php echo $retailer['name']; ?>"> -->
-                    </div>
-                    <div class="retailer-info">
-                        <div class="retailer-name">
-                            <span class="status-indicator status-<?php echo $retailer['status']; ?>"></span>
-                            <?php echo $retailer['name']; ?>
+                    <div class="retailer-item">
+                        <div class="retailer-logo">
+                            <i class="fas fa-store"></i>
+                            <!-- In production, use the actual logo: -->
+                            <!-- <img src="<?php echo $retailer['logo']; ?>" alt="<?php echo $retailer['name']; ?>"> -->
                         </div>
-                        <div class="retailer-meta">
-                            <span><i class="fas fa-tags"></i> <?php echo $retailer['products_count']; ?> products</span>
-                            <span><i class="fas fa-calendar-alt"></i> Updated: <?php echo $retailer['last_updated']; ?></span>
+                        <div class="retailer-info">
+                            <div class="retailer-name">
+                                <span class="status-indicator status-<?php echo $retailer['status']; ?>"></span>
+                                <?php echo $retailer['name']; ?>
+                            </div>
+                            <div class="retailer-meta">
+                                <span><i class="fas fa-tags"></i> <?php echo $retailer['products_count']; ?> products</span>
+                                <span><i class="fas fa-calendar-alt"></i> Updated: <?php echo $retailer['last_updated']; ?></span>
+                            </div>
+                        </div>
+                        <div class="toggle-container">
+                            <input type="checkbox" id="toggle-<?php echo $retailer['id']; ?>" class="toggle" <?php echo ($retailer['status'] === 'allowed') ? 'checked' : ''; ?>>
+                            <label class="toggle-label" for="toggle-<?php echo $retailer['id']; ?>">
+                                <span class="toggle-inner"></span>
+                                <span class="toggle-switch"></span>
+                            </label>
                         </div>
                     </div>
-                    <div class="toggle-container">
-                        <input type="checkbox" id="toggle-<?php echo $retailer['id']; ?>" class="toggle" <?php echo ($retailer['status'] === 'allowed') ? 'checked' : ''; ?>>
-                        <label class="toggle-label" for="toggle-<?php echo $retailer['id']; ?>">
-                            <span class="toggle-inner"></span>
-                            <span class="toggle-switch"></span>
-                        </label>
-                    </div>
-                </div>
                 <?php endforeach; ?>
             </div>
         </div>
 
-        
+
     </div>
 
     <script>
@@ -156,7 +162,7 @@ $retailers = [
             toggle.addEventListener('change', function() {
                 const retailerId = this.id.split('-')[1];
                 const newStatus = this.checked ? 'allowed' : 'restricted';
-                
+
                 console.log(`Retailer ID ${retailerId} status changed to ${newStatus}`);
                 // In a real application, this would send an AJAX request to update the status
                 // Example:
@@ -190,4 +196,4 @@ $retailers = [
         });
     </script>
 </body>
-</html>
+<?php include 'footer.php'; ?>

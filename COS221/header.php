@@ -15,11 +15,6 @@ if (session_status() === PHP_SESSION_NONE) {
             'deals.php' => 'Best Deals',
             'wishlist.php' => 'Wishlist',
         ];
-
-        if (!isset($_SESSION['registered']) || $_SESSION['registered'] !== true) {
-            $navItems['login.php'] = 'Log-In';
-            $navItems['signup.php'] = 'Sign-up';
-        }
         
         
         foreach ($navItems as $url => $label) {
