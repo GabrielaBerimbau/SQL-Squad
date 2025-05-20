@@ -58,8 +58,38 @@
                             $redirect = 'login.php'; //***check
                             break;
                     }
+
+                    echo json_encode([
+                        'success'=> true, 'redirect'=> $redirect
+                    ]);
+                }
+
+                else{
+                    echo json_encode([
+                        'success'=> false, 'message'=> 'Invalid username or password'
+                    ]);
                 }
             }
+
+            else{
+                echo json_encode([
+                    'success'=> false, 'message'=> 'Invalid username or password'
+                ]);
+            }
         }
+
+        catch(Exception $e){
+            echo json_encode([
+                'success'=> false, 'message'=> 'A system error occured. Please try again later.'
+            ]);
+
+            error_log('Login error: ' . $e->getMessage());
+        }
+    }
+
+    else{
+        echo json_encode([
+            'success'=> false, 'message'=> 'Invalid request method'
+        ]);
     }
 ?>
