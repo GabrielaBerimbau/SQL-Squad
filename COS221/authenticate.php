@@ -16,5 +16,28 @@
 
             exit;
         }
+
+        try{
+            $stmt = $conn->prepare("SELECT user_id, password, role, is_active FROM USERS WHERE username = ?");
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if($result->num_rows ===1){
+                $user = $result->fetch_assoc();
+
+                if($user['is_active'] != 1){
+                    echo json_encode([
+                        'success'=> false, 'message'=> 'Your account has been deactivated.'
+                    ]);
+
+                    exit;
+                }
+
+                if(password_verify($password, $user['password'])){
+                    
+                }
+            }
+        }
     }
 ?>
