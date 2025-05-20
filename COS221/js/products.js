@@ -111,3 +111,109 @@ function populateDropdown(id, options) {
         select.appendChild(opt);
     });
 }
+
+
+/**
+ * Populates a dropdown with options
+ * @param {string} id - The ID of the select element
+ * @param {Set} options - Set of options to add
+ */
+function populateDropdown(id, options) {
+    const select = document.getElementById(id);
+    if (!select) return;
+    
+    // Keep the default option
+    const defaultOption = select.querySelector("option");
+    select.innerHTML = "";
+    if (defaultOption) select.appendChild(defaultOption);
+    
+    // Add options
+    options.forEach(option => {
+        const opt = document.createElement("option");
+        opt.value = option;
+        opt.textContent = option;
+        select.appendChild(opt);
+    });
+}
+
+
+
+/**
+ * Updates product display based on selected filters
+ */
+function updateProductDisplay() {
+    const productContainer = document.getElementById("product-container");
+    if (!productContainer) return;
+    
+    // Get filter values
+    const searchInput = document.querySelector(".search-bar")?.value.toLowerCase() || "";
+    const selectedCategory = document.getElementById("category-select")?.value || "default";
+    const selectedBrand = document.getElementById("brand-select")?.value || "default";
+    const priceLimit = parseFloat(document.getElementById("price-range")?.value || 1000);
+    const sortOption = document.getElementById("sort-select")?.value || "default";
+    
+    // Filter products
+    let filteredProducts = products.filter(product => {
+        // Match search text
+        const matchesSearch = product.name.toLowerCase().includes(searchInput);
+        
+        // Match category
+        const matchesCategory = selectedCategory === "default" || 
+                               product.category_id === selectedCategory;
+        
+        // Match brand
+        const matchesBrand = selectedBrand === "default" || 
+                            product.brand === selectedBrand;
+        
+        // Return combined filter result
+        return matchesSearch && matchesCategory && matchesBrand;
+    });
+    
+    // Sort products
+    if (sortOption === "price-low") {
+        filteredProducts.sort((a, b) => a.price - b.price);
+    } else if (sortOption === "price-high") {
+        filteredProducts.sort((a, b) => b.price - a.price);
+    }
+    
+    // Display filtered products
+    if (filteredProducts.length === 0) {
+        productContainer.innerHTML = "<p>No products found.</p>";
+        return;
+    }
+    
+    productContainer.innerHTML = "";
+    
+    // Create product cards
+    filteredProducts.forEach(product => {
+        // Get the first image or use placeholder
+        const imageUrl = product.images ? product.images.split(',')[0] : "img/placeholder.jpg";
+        
+        // Create product card
+        const productCard = document.createElement("div");
+        productCard.className = "product-card";
+        
+        // Add content to card
+        productCard.innerHTML = `
+            <img src="${imageUrl}" alt="${product.name}" onerror="this.src='img/placeholder.jpg'">
+            <h2>${product.name}</h2>
+            <p>Brand: ${product.brand || "N/A"}</p>
+            <p>${product.avg_rating ? `Rating: ${product.avg_rating}/5` : ""}</p>
+            <button class="btn view-details" data-id="${product.product_id}">View Details</button>
+        `;
+        
+        // Add card to container
+        productContainer.appendChild(productCard);
+    });
+    
+    // Add event listeners to view details buttons
+    document.querySelectorAll('.view-details').forEach(button => {
+        button.addEventListener('click', function() {
+            const productId = this.getAttribute('data-id');
+            window.location.href = `product-details.php?id=${productId}`;
+        });
+    });
+}
+
+
+
