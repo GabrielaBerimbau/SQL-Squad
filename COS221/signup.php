@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <title>CompareIt - Welcome</title>
@@ -8,31 +9,35 @@
     <link rel="stylesheet" href="css/footer.css" />
 </head>
 
-<main>
-    <section class="signup-section">
-        <h2>Create Your Account</h2>
-        <form id="signup-form" method="POST">
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required>
+<body>
+    <a href="index.php" class="back-button">← Back</a>
+    
+    <main>
+        <section class="signup-section">
+            <h2>Create Your Account</h2>
+            <form id="signup-form" method="POST">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
 
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
 
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
 
-            <label for="role">Role:</label>
-            <select id="role" name="role" required>
-                <option value="Customer">Customer</option>
-                <option value="Retailer">Retailer</option>
-                <option value="Administrator">Administrator</option>
-            </select>
+                <label for="role">Role:</label>
+                <select id="role" name="role" required>
+                    <option value="Customer">Customer</option>
+                    <option value="Retailer">Retailer</option>
+                    <option value="Administrator">Administrator</option>
+                </select>
 
-            <div id="error-msg" style="color: red; display: none;"></div>
+                <div id="error-msg" style="color: red; display: none;"></div>
 
-            <button type="submit">Register</button>
-        </form>
-    </section>
-</main>
+                <button type="submit">Register</button>
+            </form>
+        </section>
+    </main>
+</body>
 
 <?php include 'footer.php'; ?>

@@ -256,4 +256,4 @@ $average_price = array_sum(array_column($products, 'price')) / $total_products;
         });
     </script>
 </body>
-</html>
+<?php include 'footer.php'; ?>
