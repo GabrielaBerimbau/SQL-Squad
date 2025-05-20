@@ -8,21 +8,26 @@
     <link rel="stylesheet" href="css/footer.css" />
 </head>
 
-<main>
-    <section class="login-section">
-        <h2>Log In</h2>
-        <form id="login-form" method="POST">
-            <label for="username">Username:</label>
-            <input type="username" id="username" name="username">
+<body>
+    <a href="index.php" class="back-button">← Back</a>
 
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password">
+    <main>
+        <section class="login-section">
+            <h2>Log In</h2>
+            <form id="login-form" method="POST">
+                <label for="username">Username:</label>
+                <input type="username" id="username" name="username">
 
-            <div id="error-msg" style="color: red; display: none;"></div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password">
 
-            <button type="submit">Login</button>
-        </form>
-    </section>
-</main>
+                <div id="error-msg" style="color: red; display: none;"></div>
 
-<?php include 'footer.php'; ?>
+                <button type="submit">Login</button>
+            </form>
+        </section>
+    </main>
+
+    <?php include 'footer.php'; ?>
+</body>
+</html>

@@ -41,4 +41,4 @@
     <script src="js/view.js"></script> 
 
 </body>
-</html>
+<?php include 'footer.php'; ?>

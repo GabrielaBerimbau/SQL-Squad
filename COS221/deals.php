@@ -82,4 +82,4 @@
 
     <script src="js/deals.js"></script> 
 </body>
-</html>
+<?php include 'footer.php'; ?>

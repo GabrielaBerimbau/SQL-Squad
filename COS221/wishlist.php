@@ -26,4 +26,4 @@
     <script src="js/wishlist.js"></script>
 
 </body>
-</html>
+<?php include 'footer.php'; ?>

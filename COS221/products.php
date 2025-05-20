@@ -72,4 +72,4 @@ include('config.php');
     <script src="js/products.js"></script>
 
 </body>
-</html>
+<?php include 'footer.php'; ?>

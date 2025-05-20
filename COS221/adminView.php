@@ -1,5 +1,4 @@
 <?php
-//adminView.php
 
 $pageTitle = "Admin - Manage Retailers";
 session_start();
