@@ -93,7 +93,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="wishlist-item-details">
                     <h3>${product.name}</h3>
-                    <p class="item-price">${product.price_formatted}</p>
                     <p class="item-rating">★ ${ratingDisplay}</p>
                     <p class="item-stock">${stockStatus}</p>
                 </div>

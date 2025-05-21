@@ -5,8 +5,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchBar = document.querySelector('.search-bar');
     const categorySelect = document.getElementById('category-select');
     const brandSelect = document.getElementById('brand-select');
-    const priceRange = document.getElementById('price-range');
-    const priceRangeValue = document.getElementById('price-range-value');
     const sortSelect = document.getElementById('sort-select');
     const loadingAnimation = document.getElementById('loading-animation');
     const successAlert = document.getElementById('success-alert');
@@ -15,7 +13,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let filters = {
         category_id: 'default',
         brand: 'default',
-        maxPrice: 1000, // Default value, will be updated from API
         sort: 'default',
         search: ''
     };
@@ -46,15 +43,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     brandSelect.addEventListener('change', function() {
         filters.brand = this.value;
-        loadProducts();
-    });
-    
-    priceRange.addEventListener('input', function() {
-        filters.maxPrice = this.value;
-        priceRangeValue.textContent = `Max Price: R${this.value}`;
-    });
-    
-    priceRange.addEventListener('change', function() {
         loadProducts();
     });
     
@@ -149,8 +137,8 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'Wishlist',
             action: action,
             product_id: productId,
-            user_id: localStorage.getItem('user_id') // Add this line
-    };
+            user_id: localStorage.getItem('user_id')
+        };
         
         fetch('api.php', {
             method: 'POST',
@@ -198,8 +186,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             showAlert('An error occurred. Please try again.', 'error');
         });
-
-        
     }
     
     // Load products from API
@@ -231,11 +217,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 displayProducts(data.data.products);
                 populateFilterDropdowns(data.data.categories, data.data.brands);
                 
-                // Update price range slider if provided
-                if (data.data.price_range) {
-                    updatePriceRange(data.data.price_range);
-                }
-                
                 // Update wishlist buttons after products are displayed
                 if (localStorage.getItem('user_id')) {
                     updateWishlistButtonsUI();
@@ -249,24 +230,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error:', error);
             productContainer.innerHTML = '<p class="error-message">Failed to load products. Please try again later.</p>';
         });
-    }
-    
-    // Update price range slider based on actual product prices
-    function updatePriceRange(priceRangeData) {
-        if (priceRangeData.min_price !== null && priceRangeData.max_price !== null) {
-            const minPrice = Math.floor(priceRangeData.min_price);
-            const maxPrice = Math.ceil(priceRangeData.max_price);
-            
-            priceRange.min = minPrice;
-            priceRange.max = maxPrice;
-            
-            // Only update the current value if it's the first load or outside valid range
-            if (filters.maxPrice > maxPrice || filters.maxPrice < minPrice) {
-                priceRange.value = maxPrice;
-                filters.maxPrice = maxPrice;
-                priceRangeValue.textContent = `Max Price: R${maxPrice}`;
-            }
-        }
     }
     
     // Display products in the container
@@ -302,7 +265,6 @@ document.addEventListener('DOMContentLoaded', function() {
             productCard.innerHTML = `
                 <img src="${product.primary_image}" alt="${product.name}" class="product-image">
                 <h3 class="product-name">${product.name}</h3>
-                <p class="product-price">${product.price_formatted}</p>
                 <p class="product-rating">★ ${ratingDisplay}</p>
                 <p class="product-stock">${stockStatus}</p>
                 <p class="product-description">${product.description ? product.description.substring(0, 100) + '...' : 'No description available'}</p>
@@ -363,6 +325,4 @@ document.addEventListener('DOMContentLoaded', function() {
             }, wait);
         };
     }
-
-    
 });
