@@ -302,7 +302,6 @@ document.addEventListener('DOMContentLoaded', function() {
             productCard.innerHTML = `
                 <img src="${product.primary_image}" alt="${product.name}" class="product-image">
                 <h3 class="product-name">${product.name}</h3>
-                <p class="product-brand">${product.brand || 'Brand not specified'}</p>
                 <p class="product-price">${product.price_formatted}</p>
                 <p class="product-rating">★ ${ratingDisplay}</p>
                 <p class="product-stock">${stockStatus}</p>
