@@ -20,8 +20,18 @@ document.addEventListener('DOMContentLoaded', function() {
         search: ''
     };
     
+    // Wishlist items cache to track which products are in the wishlist
+    let wishlistItems = {};
+    
     // Initialize product display
     loadProducts();
+    
+    // Check if user is logged in
+    const isLoggedIn = !!localStorage.getItem('user_id');
+    if (isLoggedIn) {
+        // If logged in, get user's wishlist items for the UI
+        fetchUserWishlist();
+    }
     
     // Setup event listeners
     searchBar.addEventListener('input', debounce(function() {
@@ -52,6 +62,145 @@ document.addEventListener('DOMContentLoaded', function() {
         filters.sort = this.value;
         loadProducts();
     });
+    
+    // Add event listener for wishlist buttons
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('wishlist-btn')) {
+            const productId = e.target.getAttribute('data-id');
+            handleWishlistAction(productId, e.target);
+        }
+    });
+    
+    // Fetch user's wishlist to know which products are already in wishlist
+    function fetchUserWishlist() {
+        // Only fetch if logged in
+        if (!localStorage.getItem('user_id')) return;
+        
+        const requestData = {
+            type: 'GetWishlistItems'
+        };
+        
+        fetch('api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success' && data.data.products) {
+                // Update wishlist cache
+                data.data.products.forEach(product => {
+                    wishlistItems[product.product_id] = true;
+                });
+                
+                // Update UI for all wishlist buttons
+                updateWishlistButtonsUI();
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching wishlist:', error);
+        });
+    }
+    
+    // Update all wishlist buttons based on cached data
+    function updateWishlistButtonsUI() {
+        document.querySelectorAll('.wishlist-btn').forEach(button => {
+            const productId = button.getAttribute('data-id');
+            if (wishlistItems[productId]) {
+                button.classList.add('in-wishlist');
+                button.textContent = 'Remove from Wishlist';
+            } else {
+                button.classList.remove('in-wishlist');
+                button.textContent = 'Add to Wishlist';
+            }
+        });
+    }
+    
+    // Handle adding/removing from wishlist
+    function handleWishlistAction(productId, button) {
+        // Check if user is logged in
+        
+        if (!localStorage.getItem('user_id')) {
+            showAlert('Please log in to add items to your wishlist', 'error');
+            setTimeout(() => {
+                window.location.href = 'login.php';
+            }, 1500);
+            return;
+        }
+        
+        // Determine action based on whether product is in wishlist
+        const isInWishlist = wishlistItems[productId];
+        const action = isInWishlist ? 'remove' : 'add';
+        
+        // Update UI immediately for better user experience
+        if (isInWishlist) {
+            button.classList.remove('in-wishlist');
+            button.textContent = 'Add to Wishlist';
+            delete wishlistItems[productId];
+        } else {
+            button.classList.add('in-wishlist');
+            button.textContent = 'Remove from Wishlist';
+            wishlistItems[productId] = true;
+        }
+        
+        const requestData = {
+            type: 'Wishlist',
+            action: action,
+            product_id: productId,
+            user_id: localStorage.getItem('user_id') // Add this line
+    };
+        
+        fetch('api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Show success message
+                const message = action === 'add' 
+                    ? 'Product added to wishlist' 
+                    : 'Product removed from wishlist';
+                showAlert(message, 'success');
+            } else {
+                // Revert UI on error
+                if (isInWishlist) {
+                    button.classList.add('in-wishlist');
+                    button.textContent = 'Remove from Wishlist';
+                    wishlistItems[productId] = true;
+                } else {
+                    button.classList.remove('in-wishlist');
+                    button.textContent = 'Add to Wishlist';
+                    delete wishlistItems[productId];
+                }
+                
+                showAlert('Failed to update wishlist: ' + data.data, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            
+            // Revert UI on error
+            if (isInWishlist) {
+                button.classList.add('in-wishlist');
+                button.textContent = 'Remove from Wishlist';
+                wishlistItems[productId] = true;
+            } else {
+                button.classList.remove('in-wishlist');
+                button.textContent = 'Add to Wishlist';
+                delete wishlistItems[productId];
+            }
+            
+            showAlert('An error occurred. Please try again.', 'error');
+        });
+
+        
+    }
     
     // Load products from API
     function loadProducts() {
@@ -85,6 +234,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update price range slider if provided
                 if (data.data.price_range) {
                     updatePriceRange(data.data.price_range);
+                }
+                
+                // Update wishlist buttons after products are displayed
+                if (localStorage.getItem('user_id')) {
+                    updateWishlistButtonsUI();
                 }
             } else {
                 productContainer.innerHTML = `<p class="error-message">Error loading products: ${data.data}</p>`;
@@ -140,6 +294,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 '<span class="in-stock">In Stock</span>' : 
                 '<span class="out-of-stock">Out of Stock</span>';
             
+            // Determine wishlist status based on our cached data
+            const isInWishlist = wishlistItems[product.product_id] || false;
+            const wishlistBtnClass = isInWishlist ? 'wishlist-btn in-wishlist' : 'wishlist-btn';
+            const wishlistBtnText = isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist';
+            
             productCard.innerHTML = `
                 <img src="${product.primary_image}" alt="${product.name}" class="product-image">
                 <h3 class="product-name">${product.name}</h3>
@@ -148,8 +307,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p class="product-rating">★ ${ratingDisplay}</p>
                 <p class="product-stock">${stockStatus}</p>
                 <p class="product-description">${product.description ? product.description.substring(0, 100) + '...' : 'No description available'}</p>
-                <button class="add-to-cart-btn" data-id="${product.product_id}" ${product.in_stock != 1 ? 'disabled' : ''}>
-                    ${product.in_stock == 1 ? 'Add to Cart' : 'Out of Stock'}
+                <button class="${wishlistBtnClass}" data-id="${product.product_id}">
+                    ${wishlistBtnText}
                 </button>
                 <button class="view-details-btn" onclick="window.location.href='product-details.php?id=${product.product_id}'">View Details</button>
             `;
@@ -205,4 +364,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }, wait);
         };
     }
+
+    
 });

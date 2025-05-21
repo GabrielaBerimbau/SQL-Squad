@@ -1,89 +1,37 @@
-// products.js
+// wishlist.js - For displaying and managing wishlist items
 document.addEventListener('DOMContentLoaded', function() {
     // Elements
     const productContainer = document.getElementById('product-container');
-    const searchBar = document.querySelector('.search-bar');
-    const categorySelect = document.getElementById('category-select');
-    const brandSelect = document.getElementById('brand-select');
-    const priceRange = document.getElementById('price-range');
-    const priceRangeValue = document.getElementById('price-range-value');
-    const sortSelect = document.getElementById('sort-select');
     const loadingAnimation = document.getElementById('loading-animation');
-    const successAlert = document.getElementById('success-alert');
-    
-    // Current filter values
-    let filters = {
-        category_id: 'default',
-        brand: 'default',
-        maxPrice: 1000, // Default value, will be updated from API
-        sort: 'default',
-        search: ''
-    };
-
-    // Wishlist items cache
-    let wishlistItems = {};
-    
-    // Initialize product display
-    loadProducts();
     
     // Check if user is logged in
-    const isLoggedIn = !!localStorage.getItem('user_id');
-    if (isLoggedIn) {
-        // If logged in, get their wishlist items
-        checkWishlistItems();
+    const userId = localStorage.getItem('user_id');
+    if (!userId) {
+        // If not logged in, show message and redirect after delay
+        productContainer.innerHTML = `
+            <div class="auth-message">
+                <p>You need to log in to view your wishlist.</p>
+                <button onclick="window.location.href='login.php'">Log In</button>
+            </div>
+        `;
+        loadingAnimation.style.display = 'none';
+        return;
     }
     
-    // Setup event listeners
-    searchBar.addEventListener('input', debounce(function() {
-        filters.search = this.value.trim();
-        loadProducts();
-    }, 500));
+    // If logged in, load wishlist items
+    loadWishlistItems();
     
-    categorySelect.addEventListener('change', function() {
-        filters.category_id = this.value;
-        loadProducts();
-    });
-    
-    brandSelect.addEventListener('change', function() {
-        filters.brand = this.value;
-        loadProducts();
-    });
-    
-    priceRange.addEventListener('input', function() {
-        filters.maxPrice = this.value;
-        priceRangeValue.textContent = `Max Price: R${this.value}`;
-    });
-    
-    priceRange.addEventListener('change', function() {
-        loadProducts();
-    });
-    
-    sortSelect.addEventListener('change', function() {
-        filters.sort = this.value;
-        loadProducts();
-    });
-    
-    // Add to wishlist functionality
-    document.addEventListener('click', function(e) {
-        if (e.target && e.target.classList.contains('wishlist-btn')) {
-            const productId = e.target.getAttribute('data-id');
-            toggleWishlistItem(productId, e.target);
-        }
-    });
-    
-    // Load products from API
-    function loadProducts() {
+    function loadWishlistItems() {
         // Show loading animation
         loadingAnimation.style.display = 'block';
         productContainer.innerHTML = '';
         
-        // Prepare data for API request
+        // Prepare request to get wishlist items
         const requestData = {
-            type: 'GetAllProducts',
-            ...filters
+            type: 'GetWishlistItems'
         };
         
-        // Fetch products from API
+        // Fetch wishlist items from API
         fetch('api.php', {
             method: 'POST',
             headers: {
@@ -97,96 +45,37 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingAnimation.style.display = 'none';
             
             if (data.status === 'success') {
-                displayProducts(data.data.products);
-                populateFilterDropdowns(data.data.categories, data.data.brands);
-                
-                // Update price range slider if provided
-                if (data.data.price_range) {
-                    updatePriceRange(data.data.price_range);
-                }
+                displayWishlistItems(data.data.products);
             } else {
-                productContainer.innerHTML = `<p class="error-message">Error loading products: ${data.data}</p>`;
+                productContainer.innerHTML = `<p class="error-message">Error loading wishlist: ${data.data}</p>`;
             }
         })
         .catch(error => {
             loadingAnimation.style.display = 'none';
             console.error('Error:', error);
-            productContainer.innerHTML = '<p class="error-message">Failed to load products. Please try again later.</p>';
+            productContainer.innerHTML = '<p class="error-message">Failed to load wishlist. Please try again later.</p>';
         });
     }
     
-    // Check which products are in the user's wishlist
-    function checkWishlistItems() {
-        const userId = localStorage.getItem('user_id');
-        if (!userId) return;
-        
-        // Get all products on the page
-        const productElements = document.querySelectorAll('.product-card');
-        const productIds = Array.from(productElements).map(el => {
-            const btn = el.querySelector('.wishlist-btn');
-            return btn ? btn.getAttribute('data-id') : null;
-        }).filter(id => id);
-        
-        // For each product, check if it's in the wishlist
-        productIds.forEach(productId => {
-            const requestData = {
-                type: 'Wishlist',
-                action: 'check',
-                product_id: productId
-            };
-            
-            fetch('api.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    wishlistItems[productId] = data.data.in_wishlist;
-                    updateWishlistButton(productId);
-                }
-            })
-            .catch(error => {
-                console.error('Error checking wishlist status:', error);
-            });
-        });
-    }
-    
-    // Update price range slider based on actual product prices
-    function updatePriceRange(priceRangeData) {
-        if (priceRangeData.min_price !== null && priceRangeData.max_price !== null) {
-            const minPrice = Math.floor(priceRangeData.min_price);
-            const maxPrice = Math.ceil(priceRangeData.max_price);
-            
-            priceRange.min = minPrice;
-            priceRange.max = maxPrice;
-            
-            // Only update the current value if it's the first load or outside valid range
-            if (filters.maxPrice > maxPrice || filters.maxPrice < minPrice) {
-                priceRange.value = maxPrice;
-                filters.maxPrice = maxPrice;
-                priceRangeValue.textContent = `Max Price: R${maxPrice}`;
-            }
-        }
-    }
-    
-    // Display products in the container
-    function displayProducts(products) {
+    function displayWishlistItems(products) {
         if (products.length === 0) {
-            productContainer.innerHTML = '<p class="no-products">No products found matching your criteria.</p>';
+            productContainer.innerHTML = `
+                <div class="empty-wishlist">
+                    <p>Your wishlist is empty.</p>
+                    <button onclick="window.location.href='products.php'">Explore Products</button>
+                </div>
+            `;
             return;
         }
         
-        // Clear previous products
-        productContainer.innerHTML = '';
+        // Create wishlist item container
+        const wishlistContainer = document.createElement('div');
+        wishlistContainer.className = 'wishlist-items';
         
-        // Create product cards
+        // Add wishlist items
         products.forEach(product => {
             const productCard = document.createElement('div');
-            productCard.className = 'product-card';
+            productCard.className = 'wishlist-item';
             
             // Format the rating with review count
             const ratingDisplay = product.avg_rating > 0 ? 
@@ -198,67 +87,52 @@ document.addEventListener('DOMContentLoaded', function() {
                 '<span class="in-stock">In Stock</span>' : 
                 '<span class="out-of-stock">Out of Stock</span>';
             
-            // Determine wishlist button state
-            const isInWishlist = wishlistItems[product.product_id] || false;
-            const wishlistBtnClass = isInWishlist ? 'wishlist-btn in-wishlist' : 'wishlist-btn';
-            const wishlistBtnText = isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist';
-            
             productCard.innerHTML = `
-                <img src="${product.primary_image}" alt="${product.name}" class="product-image">
-                <h3 class="product-name">${product.name}</h3>
-                <p class="product-brand">${product.brand || 'Brand not specified'}</p>
-                <p class="product-price">${product.price_formatted}</p>
-                <p class="product-rating">★ ${ratingDisplay}</p>
-                <p class="product-stock">${stockStatus}</p>
-                <p class="product-description">${product.description ? product.description.substring(0, 100) + '...' : 'No description available'}</p>
-                <button class="${wishlistBtnClass}" data-id="${product.product_id}">
-                    ${wishlistBtnText}
-                </button>
-                <button class="view-details-btn" onclick="window.location.href='product-details.php?id=${product.product_id}'">View Details</button>
+                <div class="wishlist-item-image">
+                    <img src="${product.primary_image}" alt="${product.name}">
+                </div>
+                <div class="wishlist-item-details">
+                    <h3>${product.name}</h3>
+                    <p class="item-brand">${product.brand || 'Brand not specified'}</p>
+                    <p class="item-price">${product.price_formatted}</p>
+                    <p class="item-rating">★ ${ratingDisplay}</p>
+                    <p class="item-stock">${stockStatus}</p>
+                </div>
+                <div class="wishlist-item-actions">
+                    <button class="view-details-btn" onclick="window.location.href='product-details.php?id=${product.product_id}'">View Details</button>
+                    <button class="remove-wishlist-btn" data-id="${product.product_id}">Remove</button>
+                </div>
             `;
             
-            productContainer.appendChild(productCard);
+            wishlistContainer.appendChild(productCard);
         });
         
-        // After adding all products, check wishlist status
-        if (localStorage.getItem('user_id')) {
-            checkWishlistItems();
-        }
+        // Clear and add to container
+        productContainer.innerHTML = '';
+        productContainer.appendChild(wishlistContainer);
+        
+        // Add event listeners for remove buttons
+        document.querySelectorAll('.remove-wishlist-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const productId = this.getAttribute('data-id');
+                removeFromWishlist(productId, this.closest('.wishlist-item'));
+            });
+        });
     }
     
-    // Toggle wishlist item (add/remove)
-    function toggleWishlistItem(productId, buttonElement) {
-        // Check if user is logged in
-        const userId = localStorage.getItem('user_id');
-        if (!userId) {
-            showAlert('Please log in to add items to your wishlist.', 'error');
-            setTimeout(() => {
-                window.location.href = 'login.php';
-            }, 2000);
-            return;
-        }
-        
-        // Determine action based on current state
-        const isInWishlist = wishlistItems[productId] || false;
-        const action = isInWishlist ? 'remove' : 'add';
-        
-        // Update UI optimistically
-        if (buttonElement) {
-            if (action === 'add') {
-                buttonElement.classList.add('in-wishlist');
-                buttonElement.textContent = 'Remove from Wishlist';
-            } else {
-                buttonElement.classList.remove('in-wishlist');
-                buttonElement.textContent = 'Add to Wishlist';
-            }
-        }
-        
+    function removeFromWishlist(productId, itemElement) {
         // Prepare wishlist data
         const wishlistData = {
             type: 'Wishlist',
-            action: action,
+            action: 'remove',
             product_id: productId
         };
+        
+        // Optimistically update UI
+        if (itemElement) {
+            itemElement.classList.add('removing');
+            itemElement.style.opacity = '0.5';
+        }
         
         // Send request to API
         fetch('api.php', {
@@ -271,100 +145,75 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                // Update cached wishlist state
-                wishlistItems[productId] = !isInWishlist;
-                
-                // Show success message
-                const message = action === 'add' ? 
-                    'Product added to wishlist!' : 
-                    'Product removed from wishlist';
-                showAlert(message, 'success');
+                // Success - remove the item from DOM with animation
+                if (itemElement) {
+                    itemElement.style.height = itemElement.offsetHeight + 'px';
+                    setTimeout(() => {
+                        itemElement.style.height = '0';
+                        itemElement.style.margin = '0';
+                        itemElement.style.padding = '0';
+                        
+                        setTimeout(() => {
+                            itemElement.remove();
+                            
+                            // Check if any items remain
+                            if (document.querySelectorAll('.wishlist-item').length === 0) {
+                                // If no items left, show empty message
+                                displayWishlistItems([]);
+                            }
+                        }, 300);
+                    }, 100);
+                }
             } else {
-                // Revert UI on error
-                if (buttonElement) {
-                    if (action === 'add') {
-                        buttonElement.classList.remove('in-wishlist');
-                        buttonElement.textContent = 'Add to Wishlist';
-                    } else {
-                        buttonElement.classList.add('in-wishlist');
-                        buttonElement.textContent = 'Remove from Wishlist';
-                    }
+                // Error - restore UI
+                if (itemElement) {
+                    itemElement.classList.remove('removing');
+                    itemElement.style.opacity = '1';
                 }
                 
-                // Show error message
-                showAlert('Failed to update wishlist: ' + data.data, 'error');
+                // Show error toast or alert
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-toast';
+                errorDiv.textContent = 'Failed to remove item: ' + data.data;
+                document.body.appendChild(errorDiv);
+                
+                setTimeout(() => {
+                    errorDiv.classList.add('show');
+                    
+                    setTimeout(() => {
+                        errorDiv.classList.remove('show');
+                        setTimeout(() => {
+                            errorDiv.remove();
+                        }, 300);
+                    }, 3000);
+                }, 10);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showAlert('An error occurred. Please try again.', 'error');
             
-            // Revert UI on error
-            updateWishlistButton(productId);
-        });
-    }
-    
-    // Update wishlist button appearance based on cached state
-    function updateWishlistButton(productId) {
-        const buttons = document.querySelectorAll(`.wishlist-btn[data-id="${productId}"]`);
-        const isInWishlist = wishlistItems[productId] || false;
-        
-        buttons.forEach(button => {
-            if (isInWishlist) {
-                button.classList.add('in-wishlist');
-                button.textContent = 'Remove from Wishlist';
-            } else {
-                button.classList.remove('in-wishlist');
-                button.textContent = 'Add to Wishlist';
+            // Restore UI
+            if (itemElement) {
+                itemElement.classList.remove('removing');
+                itemElement.style.opacity = '1';
             }
+            
+            // Show error toast or alert
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-toast';
+            errorDiv.textContent = 'An error occurred. Please try again.';
+            document.body.appendChild(errorDiv);
+            
+            setTimeout(() => {
+                errorDiv.classList.add('show');
+                
+                setTimeout(() => {
+                    errorDiv.classList.remove('show');
+                    setTimeout(() => {
+                        errorDiv.remove();
+                    }, 300);
+                }, 3000);
+            }, 10);
         });
-    }
-    
-    // Populate filter dropdowns with data from API
-    function populateFilterDropdowns(categories, brands) {
-        // Only populate if this is the first load (to avoid resetting user selections)
-        if (categorySelect.options.length <= 1) {
-            // Populate categories
-            categories.forEach(category => {
-                const option = document.createElement('option');
-                option.value = category.category_id;
-                option.textContent = category.name;
-                categorySelect.appendChild(option);
-            });
-        }
-        
-        if (brandSelect.options.length <= 1) {
-            // Populate brands
-            brands.forEach(brand => {
-                const option = document.createElement('option');
-                option.value = brand;
-                option.textContent = brand;
-                brandSelect.appendChild(option);
-            });
-        }
-    }
-    
-    // Show alert message
-    function showAlert(message, type) {
-        successAlert.textContent = message;
-        successAlert.className = 'success-alert ' + type;
-        successAlert.style.display = 'block';
-        
-        setTimeout(() => {
-            successAlert.style.display = 'none';
-        }, 3000);
-    }
-    
-    // Debounce function for search input
-    function debounce(func, wait) {
-        let timeout;
-        return function() {
-            const context = this;
-            const args = arguments;
-            clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                func.apply(context, args);
-            }, wait);
-        };
     }
 });

@@ -36,20 +36,27 @@ class API
             return;
         }
         
-        switch ($data['type']) {
-            case 'Register':
-                $this->register($data);
-                break;
-            case 'Login':
-                $this->login($data);
-                break;
-            case 'GetAllProducts':
-                $this->getAllProducts($data);
-                break;
-            default:
-                $this->returnError("Invalid type", 400);
-                break;
-        }
+        // In api.php, update the switch statement in processRequest method to include Wishlist
+    switch ($data['type']) {
+        case 'Register':
+            $this->register($data);
+            break;
+        case 'Login':
+            $this->login($data);
+            break;
+        case 'GetAllProducts':
+            $this->getAllProducts($data);
+            break;
+        case 'GetWishlistItems':
+            $this->getWishlistItems();
+            break;
+        case 'Wishlist':  // Add this case
+            $this->handleWishlist($data);
+            break;
+        default:
+            $this->returnError("Invalid type", 400);
+            break;
+    }
     }
 
     private function register($data) 
@@ -109,6 +116,81 @@ class API
             $this->returnError("Registration failed", 500);
         }
     }
+
+    private function getWishlistItems() 
+{
+    // Check if user is logged in via session
+    if (!isset($_SESSION['user_id'])) {
+        $this->returnError("You must be logged in to view your wishlist", 401);
+        return;
+    }
+    
+    $userId = $_SESSION['user_id'];
+    
+    // Query to get all wishlist items with product details and listing info
+    $query = "
+        SELECT 
+            p.*,
+            l.price,
+            l.in_stock,
+            l.listing_id,
+            l.user_id AS seller_id,
+            COALESCE(AVG(r.rating), 0) AS avg_rating,
+            COUNT(r.rating) AS review_count
+        FROM 
+            WISHLIST w
+        JOIN 
+            PRODUCT p ON w.product_id = p.product_id
+        LEFT JOIN 
+            LISTING l ON p.product_id = l.product_id
+        LEFT JOIN 
+            REVIEW r ON p.product_id = r.product_id
+        WHERE 
+            w.user_id = ?
+        GROUP BY 
+            p.product_id, l.listing_id
+        ORDER BY 
+            p.name ASC
+    ";
+    
+    $stmt = $this->conn->prepare($query);
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    // Fetch all products in wishlist
+    $products = [];
+    while ($row = $result->fetch_assoc()) {
+        // Process images field (assuming it's stored as JSON)
+        if (!empty($row['images'])) {
+            // Try to decode as JSON first
+            $imageArray = json_decode($row['images'], true);
+            if ($imageArray) {
+                $row['primary_image'] = $imageArray[0] ?? 'img/default-product.jpg';
+            } else {
+                // If not JSON, try as comma-separated
+                $imageArray = explode(',', $row['images']);
+                $row['primary_image'] = trim($imageArray[0]) ?: 'img/default-product.jpg';
+            }
+        } else {
+            $row['primary_image'] = 'img/default-product.jpg';
+        }
+        
+        // Format the price and rating
+        $row['price_formatted'] = 'R' . number_format($row['price'], 2);
+        $row['avg_rating'] = round($row['avg_rating'], 1);
+        
+        $products[] = $row;
+    }
+    
+    // Return the data
+    $this->returnSuccess([
+        'products' => $products,
+        'count' => count($products)
+    ]);
+    
+    $stmt->close();
+}
 
     private function login($data) 
     {
